@@ -60,6 +60,7 @@ type Service interface {
 	IsBusy() bool
 	Summarize(ctx context.Context, sessionID string) error
 	UpdateModel() error
+	QueuedPrompts(sessionID string) int
 }
 
 type agent struct {
@@ -250,6 +251,11 @@ func (a *agent) Cancel(sessionID string) {
 		slog.Info("Summarize cancellation initiated", "session_id", sessionID)
 		cancel()
 	}
+
+	if a.QueuedPrompts(sessionID) > 0 {
+		slog.Info("Clearing queued prompts", "session_id", sessionID)
+		a.promptQueue.Del(sessionID)
+	}
 }
 
 func (a *agent) IsBusy() bool {
@@ -266,6 +272,14 @@ func (a *agent) IsBusy() bool {
 func (a *agent) IsSessionBusy(sessionID string) bool {
 	_, busy := a.activeRequests.Get(sessionID)
 	return busy
+}
+
+func (a *agent) QueuedPrompts(sessionID string) int {
+	l, ok := a.promptQueue.Get(sessionID)
+	if !ok {
+		return 0
+	}
+	return len(l)
 }
 
 func (a *agent) generateTitle(ctx context.Context, sessionID string, content string) error {

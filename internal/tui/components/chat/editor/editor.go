@@ -409,18 +409,33 @@ func (m *editorCmp) View() string {
 	} else {
 		m.textarea.Placeholder = m.readyPlaceholder
 	}
-	if len(m.attachments) == 0 {
-		content := t.S().Base.Padding(1).Render(
-			m.textarea.View(),
-		)
-		return content
-	}
-	content := t.S().Base.Padding(0, 1, 1, 1).Render(
-		lipgloss.JoinVertical(lipgloss.Top,
-			m.attachmentsContent(),
-			m.textarea.View(),
-		),
+	content := t.S().Base.Padding(1).Render(
+		m.textarea.View(),
 	)
+	if len(m.attachments) != 0 {
+		content = t.S().Base.Padding(0, 1, 1, 1).Render(
+			lipgloss.JoinVertical(lipgloss.Top,
+				m.attachmentsContent(),
+				m.textarea.View(),
+			),
+		)
+	}
+
+	if m.app.CoderAgent != nil {
+		queue := m.app.CoderAgent.QueuedPrompts(m.session.ID)
+		layers := []*lipgloss.Layer{
+			lipgloss.NewLayer(content),
+			lipgloss.NewLayer(
+				t.S().Base.Foreground(t.Secondary).PaddingLeft(3).Render(fmt.Sprintf(" %d queued...", queue)),
+			).Y(m.height - 1),
+		}
+		canvas := lipgloss.NewCanvas(
+			layers...,
+		)
+		return canvas.Render()
+
+	}
+
 	return content
 }
 
